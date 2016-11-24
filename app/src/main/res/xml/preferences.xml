@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="@string/pref_general"
+        android:key="pref_key_general">
+
+        <CheckBoxPreference
+            android:key="startupSync"
+            android:title="@string/startupSyncTitle"
+            android:summary="@string/startupSyncSummary"
+            android:defaultValue="true" />
+
+        <CheckBoxPreference
+            android:key="autoSync"
+            android:title="@string/autoSyncTitle"
+            android:summary="@string/autoSyncSummary"
+            android:defaultValue="true" />
+
+        <EditTextPreference
+            android:key="userID"
+            android:title="@string/userIDTitle"
+            android:summary="@string/userIDSummary"
+            android:defaultValue=""/>
+
+        <EditTextPreference
+            android:key="apiKey"
+            android:title="@string/apiKeytitle"
+            android:summary="@string/apiKeySummary"
+            android:defaultValue=""/>
+
+        <EditTextPreference
+            android:key="tempFeedID"
+            android:title="@string/tempFeedIDTitle"
+            android:summary="@string/tempFeedIDSummary"
+            android:defaultValue=""/>
+
+        <EditTextPreference
+            android:key="targetFeedID"
+            android:title="@string/targetFeedIdTitle"
+            android:summary="@string/targetFeedIDSummary"
+            android:defaultValue=""/>
+
+        <EditTextPreference
+            android:key="targetInputName"
+            android:title="@string/targetInputNametitle"
+            android:summary="@string/targetInputNameSummary"
+            android:defaultValue=""/>
+
+        <EditTextPreference
+            android:key="chartFeedID"
+            android:title="@string/chartFeedIDTitle"
+            android:summary="@string/chartFeedIDSummary"
+            android:defaultValue=""/>
+    </PreferenceCategory>
+
+</PreferenceScreen>

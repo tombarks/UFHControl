@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">"UFH Control"</string>
+    <string name="emonURL">"https://emoncms.org/feed/value.json?id="</string>
+    <string name="emonUserListURL">"https://emoncms.org/feed/list.json?userid="</string>
+    <string name="temperatureFetched">"Target temperature fetched from emoncms.org"</string>
+    <string name="temperatureFetchedFail">"Failed to get target temperature!"</string>
+    <string name="temperatureRequest">"Requesting target temperature from emoncms.org"</string>
+    <string name="invalidTargetTemp">"Invalid target temperature (0C-30C)"</string>
+    <string name="sendingTemp">"Sending target temperature to emoncms.org:  "</string>
+    <string name="failedSendingTemp">"Failed to send target temperature to emoncms.org"</string>
+    <string name="settings">"Settings"</string>
+    <string name="about">"About"</string>
+    <string name="pref_general">"General Settings"</string>
+    <string name="emonPostURL">"https://emoncms.org/api/post?apikey=[apiKey]&amp;json={[feedName]:[temperature]}"</string>
+    <string name="ufhTarget">"UFH Target: "</string>
+    <string name="ufhTemp">"UFH Temperature: "</string>
+    <string name="startupSyncTitle">Sync target on start and resume</string>
+    <string name="startupSyncSummary">Fetch feed data when the application starts or resumes.</string>
+    <string name="autoSyncTitle">Auto re-sync the data every 30 seconds</string>
+    <string name="autoSyncSummary">Auto fetch feed data on application every 30 seconds.</string>
+    <string name="userIDTitle">User ID</string>
+    <string name="userIDSummary">emoncms.org user ID</string>
+    <string name="apiKeytitle">Api Key</string>
+    <string name="apiKeySummary">emoncms.org secret API key</string>
+    <string name="tempFeedIDTitle">UFH Temperature Feed ID</string>
+    <string name="tempFeedIDSummary">The emoncms.org feed ID for the actual UFH temperature</string>
+    <string name="targetFeedIdTitle">UFH Demand Feed ID</string>
+    <string name="targetFeedIDSummary">The emoncms.org feed ID for the demanded UFH temperature</string>
+    <string name="targetInputNametitle">UFH Demand Input Name</string>
+    <string name="targetInputNameSummary">The emoncms.org input name for updating the demanded UFH temperature</string>
+    <string name="chartFeedIDTitle">Chart Feed ID</string>
+    <string name="chartFeedIDSummary">The feed ID for the feed to be charted in the main activity</string>
+    <string name="chartFeedNameDefault">"Waiting for feed name. Try refetching."</string>
+    <string name="aboutText">Emoncms.org UFH control by tombarks</string>
+</resources>
