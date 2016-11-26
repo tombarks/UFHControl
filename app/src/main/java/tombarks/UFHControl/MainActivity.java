@@ -35,8 +35,6 @@ import org.json.JSONException;
 import java.util.ArrayList;
 import java.util.List;
 
-import tombarks.UFHControl.R;
-
 public class MainActivity extends AppCompatActivity {
 
     TextView targetText;
@@ -309,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
         }
         // Instantiate the RequestQueue.
         String apiKey = prefs.getString("apiKey", "");
-        String feedName = prefs.getString("targetFeedName", "");
+        String feedName = prefs.getString("targetInputName", "");
         RequestQueue queue = Volley.newRequestQueue(this);
 
         //build the url string
