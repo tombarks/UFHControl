@@ -1,10 +1,14 @@
 package tombarks.UFHControl;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -55,6 +59,13 @@ public class MainActivity extends AppCompatActivity {
 
     String chartFeedName;
 
+    public int mId;
+    NotificationCompat.Builder mBuilder;
+    NotificationManager mNotificationManager;
+
+    String targetValueString = "Unknown";
+    String currentValueString = "Unknown";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -74,6 +85,9 @@ public class MainActivity extends AppCompatActivity {
 
         //Get shared prefereces
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+        //Create persistent notification
+        if(prefs.getBoolean("showNotification", true))createNotification();
 
         //Remove edit text focus
         findViewById(R.id.mainLayout).requestFocus();
@@ -210,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
         RequestQueue queue = Volley.newRequestQueue(this);
 
         //Get the feed ID's
-        String targetFeedID = prefs.getString("targetFeedID", "");
+        final String targetFeedID = prefs.getString("targetFeedID", "");
         String temperatureFeedID = prefs.getString("tempFeedID", "");
 
         //build the request string
@@ -222,8 +236,20 @@ public class MainActivity extends AppCompatActivity {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
+
+                        targetValueString = response.replace("\"", "")+"\u00B0C";
+
                         // Display the first 500 characters of the response string.
-                        targetText.setText(getString(R.string.ufhTarget) + response.replace("\"", "")+"\u00B0C");
+                        targetText.setText(getString(R.string.ufhTarget) + targetValueString);
+
+                        if(mBuilder != null && mNotificationManager != null && prefs.getBoolean("showNotification", true)) {
+                            mBuilder.setContentText("UFH Target: " + targetValueString + ", UFH Temperature: " + currentValueString);
+                            // Because the ID remains unchanged, the existing notification is
+                            // updated.
+                            mNotificationManager.notify(
+                                    mId,
+                                    mBuilder.build());
+                        }
 
                         Context context = getApplicationContext();
                         CharSequence text = getString(R.string.temperatureFetched);
@@ -252,8 +278,21 @@ public class MainActivity extends AppCompatActivity {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
+
+                        currentValueString = response.replace("\"", "")+"\u00B0C";
+
                         // Display the first 500 characters of the response string.
-                        tempText.setText(getString(R.string.ufhTemp) + response.replace("\"", "")+"\u00B0C");
+                        tempText.setText(getString(R.string.ufhTemp) + currentValueString);
+
+                        if(mBuilder != null && mNotificationManager != null && prefs.getBoolean("showNotification", true)) {
+                            mBuilder.setContentText("UFH Target: " + targetValueString + ", UFH Temperature: " + currentValueString);
+                            // Because the ID remains unchanged, the existing notification is
+                            // updated.
+                            mNotificationManager.notify(
+                                    mId,
+                                    mBuilder.build());
+                        }
+
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -275,10 +314,6 @@ public class MainActivity extends AppCompatActivity {
     //Get the current temperature
     private void setTemp(String temperature)
     {
-        //disable buttons
-        button_fetch.setEnabled(false);
-        button_send.setEnabled(false);
-
         //check if the value for the temperature is valid
         try {
             int myNum = Integer.parseInt(temperature);
@@ -305,6 +340,11 @@ public class MainActivity extends AppCompatActivity {
 
             return;
         }
+
+        //disable buttons
+        button_fetch.setEnabled(false);
+        button_send.setEnabled(false);
+        
         // Instantiate the RequestQueue.
         String apiKey = prefs.getString("apiKey", "");
         String feedName = prefs.getString("targetInputName", "");
@@ -445,6 +485,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onRestart() {
         super.onRestart();  // Always call the superclass method first
 
+        //get shared prefereces and clear notification
+        if(!prefs.getBoolean("showNotification", true) && mNotificationManager != null)mNotificationManager.cancel(mId);
+        if(prefs.getBoolean("showNotification", true) && mNotificationManager == null)createNotification();
+
         // Activity being restarted from stopped state
         //do a fetch if the preference to do so has been set
         boolean pref = prefs.getBoolean("startupSync", true);
@@ -459,11 +503,53 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.mainLayout).requestFocus();
     }
 
+    private void createNotification()
+    {
+        mBuilder =
+                new NotificationCompat.Builder(this)
+                        .setSmallIcon(R.drawable.ic_ac_unit_black_24dp)
+                        .setContentTitle("Underfloor Heating Control")
+                        .setContentText("Waiting for update.").setOngoing(true);
+        // Creates an explicit intent for an Activity in your app
+        Intent resultIntent = new Intent(this,  MainActivity.class);
+
+        // The stack builder object will contain an artificial back stack for the
+        // started Activity.
+        // This ensures that navigating backward from the Activity leads out of
+        // your application to the Home screen.
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+        // Adds the back stack for the Intent (but not the Intent itself)
+        stackBuilder.addParentStack(MainActivity.class);
+        // Adds the Intent that starts the Activity to the top of the stack
+        stackBuilder.addNextIntent(resultIntent);
+        PendingIntent resultPendingIntent =
+                stackBuilder.getPendingIntent(
+                        0,
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                );
+        mBuilder.setContentIntent(resultPendingIntent);
+        mNotificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        // mId allows you to update the notification later on.
+        mNotificationManager.notify(mId, mBuilder.build());
+    }
+
     @Override
     protected void onPause()
     {
         super.onPause();
 
+        //end
+        if(!prefs.getBoolean("showNotification", true) && mNotificationManager != null)mNotificationManager.cancel(mId);
+        if(prefs.getBoolean("showNotification", true) && mNotificationManager == null)createNotification();
+
         appIsRunning = false;
+    }
+
+    @Override
+    public void onDestroy() {
+        if(mNotificationManager !=null)mNotificationManager.cancel(mId);
+        super.onDestroy();
+
     }
 }
