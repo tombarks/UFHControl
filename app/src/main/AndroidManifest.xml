@@ -18,6 +18,7 @@
             </intent-filter>
         </activity>
         <activity android:name="tombarks.UFHControl.preferences_activity"></activity>
+        <service android:name=".emonService" />
     </application>
 
 </manifest>

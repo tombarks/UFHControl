@@ -32,4 +32,6 @@
     <string name="chartFeedIDSummary">The feed ID for the feed to be charted in the main activity</string>
     <string name="chartFeedNameDefault">"Waiting for feed name. Try refetching."</string>
     <string name="aboutText">Emoncms.org UFH control by tombarks</string>
+    <string name="notificationPreftitle">Show notification</string>
+    <string name="notificationPrefSummary">Show a persistent notification with the current UFH target and temperature.</string>
 </resources>

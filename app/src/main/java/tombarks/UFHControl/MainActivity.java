@@ -317,7 +317,7 @@ public class MainActivity extends AppCompatActivity {
         //check if the value for the temperature is valid
         try {
             int myNum = Integer.parseInt(temperature);
-            if(myNum < 0 || myNum > 30)
+            if(myNum < 0 || myNum > 35)
             {
                 Context context = getApplicationContext();
                 CharSequence text = getString(R.string.invalidTargetTemp);
@@ -344,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
         //disable buttons
         button_fetch.setEnabled(false);
         button_send.setEnabled(false);
-        
+
         // Instantiate the RequestQueue.
         String apiKey = prefs.getString("apiKey", "");
         String feedName = prefs.getString("targetInputName", "");
