@@ -188,16 +188,7 @@ public class MainActivity extends AppCompatActivity {
      */
     public void fetch(View view) {
 
-        Context context = getApplicationContext();
-        String text = String.format(localEmonCMSFetchService.getTemperature() + " " + localEmonCMSFetchService.getTargetTemp() + "%d", localEmonCMSFetchService.getValue());
-        int duration = Toast.LENGTH_LONG;
-
-        Toast toast = Toast.makeText(context, text, duration);
-        toast.show();
-
         fetchWebData();
-
-
     }
 
     //Getch Method

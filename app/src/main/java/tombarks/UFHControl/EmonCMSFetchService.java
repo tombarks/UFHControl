@@ -237,7 +237,7 @@ public class EmonCMSFetchService extends Service {
         Notification notification = new Notification.Builder(this)
                 .setContentTitle("Underfloor Heating Control")
                 .setContentText(text).setOngoing(true)
-                .setSmallIcon(R.drawable.ic_wb_sunny_black_24dp)
+                .setSmallIcon(R.drawable.ic_ac_unit_black_24dp)
                 .setContentIntent(pendingIntent)
                 .setTicker("ufhControl")
                 .build();
