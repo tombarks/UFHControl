@@ -5,7 +5,7 @@
     <string name="temperatureFetched">"Target temperature fetched from emoncms.org"</string>
     <string name="temperatureFetchedFail">"Failed to get target temperature!"</string>
     <string name="temperatureRequest">"Requesting target temperature from emoncms.org"</string>
-    <string name="invalidTargetTemp">"Invalid target temperature (0C-30C)"</string>
+    <string name="invalidTargetTemp">"Invalid target temperature (0C-35C)"</string>
     <string name="sendingTemp">"Sending target temperature to emoncms.org:  "</string>
     <string name="failedSendingTemp">"Failed to send target temperature to emoncms.org"</string>
     <string name="settings">"Settings"</string>
