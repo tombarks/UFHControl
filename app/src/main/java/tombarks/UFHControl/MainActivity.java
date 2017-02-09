@@ -3,6 +3,7 @@ package tombarks.UFHControl;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,6 +12,7 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -39,6 +41,10 @@ import org.json.JSONException;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.os.IBinder;
+import android.content.ServiceConnection;
+import tombarks.UFHControl.EmonCMSFetchService.MyLocalBinder;
+
 public class MainActivity extends AppCompatActivity {
 
     TextView targetText;
@@ -59,12 +65,12 @@ public class MainActivity extends AppCompatActivity {
 
     String chartFeedName;
 
-    public int mId;
-    NotificationCompat.Builder mBuilder;
-    NotificationManager mNotificationManager;
-
     String targetValueString = "Unknown";
     String currentValueString = "Unknown";
+
+    //Service binding
+    EmonCMSFetchService localEmonCMSFetchService;
+    boolean isBound = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,31 +78,36 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        chartFeedName =  getString(R.string.chartFeedNameDefault);
+        chartFeedName = getString(R.string.chartFeedNameDefault);
 
         //Get handles to GUI objects
         targetText = (TextView) findViewById(R.id.fetchText);
         tempText = (TextView) findViewById(R.id.ufhTemp);
         sendText = (EditText) findViewById(R.id.sendText);
         userFeedListText = (TextView) findViewById(R.id.userFeedList);
-        button_send = (Button)findViewById(R.id.buttonSend);
-        button_fetch = (Button)findViewById(R.id.buttonFetch);
+        button_send = (Button) findViewById(R.id.buttonSend);
+        button_fetch = (Button) findViewById(R.id.buttonFetch);
         chart = (LineChart) findViewById(R.id.chart);
 
         //Get shared prefereces
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
-        //Create persistent notification
-        if(prefs.getBoolean("showNotification", true))createNotification();
-
         //Remove edit text focus
         findViewById(R.id.mainLayout).requestFocus();
 
         //do a fetch if the preference to do so has been set
-        if(prefs.getBoolean("startupSync", true))fetchWebData();
+        if (prefs.getBoolean("startupSync", true)) fetchWebData();
 
         // Run the above code block on the main thread after 2 seconds
         autoFetchHandler.postDelayed(runnableCode, 1000);
+
+        //Bind
+//        Intent i = new Intent(this, EmonCMSFetchService.class);
+//        bindService(i, emonCMSConnection, Context.BIND_AUTO_CREATE);
+        if(prefs.getBoolean("showNotification", true))startService(new Intent(getBaseContext(), EmonCMSFetchService.class));
+
+        if(MyDebug.LOG)Log.i("tom", "activity created");
+
     }
 
     // Define the code block to be executed
@@ -104,21 +115,21 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             // Do something here on the main thread
-            if(appIsRunning && prefs.getBoolean("autoSync", false) && (System.currentTimeMillis() - fetchExecutionTimer) >= 30000)fetchWebData();
+            if (appIsRunning && prefs.getBoolean("autoSync", false) && (System.currentTimeMillis() - fetchExecutionTimer) >= 30000)
+                fetchWebData();
             autoFetchHandler.postDelayed(runnableCode, 1000);
         }
     };
 
     //chart
-    public void drawChart()
-    {
+    public void drawChart() {
         //Generate start and end time in linux mills from poch
         //Start is 6 hours in the past
         String now = Long.toString(System.currentTimeMillis());
-        String then = Long.toString(System.currentTimeMillis()-21600000);
+        String then = Long.toString(System.currentTimeMillis() - 21600000);
         String chartFeedIDstring = prefs.getString("chartFeedID", "");
 
-        String bulkGetUrl = "https://emoncms.org/feed/data.json?id="+chartFeedIDstring+"&start="+then+"&end="+now+"&interval=600";
+        String bulkGetUrl = "https://emoncms.org/feed/data.json?id=" + chartFeedIDstring + "&start=" + then + "&end=" + now + "&interval=600";
 
         //Create the request que
         RequestQueue queue = Volley.newRequestQueue(this);
@@ -129,13 +140,12 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(String response) {
                         List<Entry> entries = new ArrayList<Entry>();
-                        try
-                        {
+                        try {
                             JSONArray jsonArray = new JSONArray(response);
 
-                            for(int i=0;i<jsonArray.length();i++) {
+                            for (int i = 0; i < jsonArray.length(); i++) {
                                 JSONArray jsonArray2 = new JSONArray(jsonArray.getJSONArray(i).toString());
-                                entries.add(new Entry(-(jsonArray.length()* 10) + (i*10), (float)jsonArray2.getDouble(1)));
+                                entries.add(new Entry(-(jsonArray.length() * 10) + (i * 10), (float) jsonArray2.getDouble(1)));
                             }
 
                             LineDataSet dataSet = new LineDataSet(entries, chartFeedName);
@@ -148,10 +158,7 @@ public class MainActivity extends AppCompatActivity {
                             chart.setDescription(desc);
                             chart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
                             chart.invalidate(); // refresh
-                        }
-
-                        catch (Exception e)
-                        {
+                        } catch (Exception e) {
                             Context context = getApplicationContext();
                             CharSequence text = e.toString();
                             int duration = Toast.LENGTH_SHORT;
@@ -176,14 +183,25 @@ public class MainActivity extends AppCompatActivity {
         queue.add(chartDataRequest);
     }
 
-    /** Called when the user clicks the Send button */
+    /**
+     * Called when the user clicks the Send button
+     */
     public void fetch(View view) {
+
+        Context context = getApplicationContext();
+        String text = String.format(localEmonCMSFetchService.getTemperature() + " " + localEmonCMSFetchService.getTargetTemp() + "%d", localEmonCMSFetchService.getValue());
+        int duration = Toast.LENGTH_LONG;
+
+        Toast toast = Toast.makeText(context, text, duration);
+        toast.show();
+
         fetchWebData();
+
+
     }
 
     //Getch Method
-    public void fetchWebData()
-    {
+    public void fetchWebData() {
         //log execution time
         fetchExecutionTimer = System.currentTimeMillis();
 
@@ -218,8 +236,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //Get the current temperature
-    private void getTemp()
-    {
+    private void getTemp() {
         //Create the request que
         RequestQueue queue = Volley.newRequestQueue(this);
 
@@ -237,19 +254,10 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(String response) {
 
-                        targetValueString = response.replace("\"", "")+"\u00B0C";
+                        targetValueString = response.replace("\"", "") + "\u00B0C";
 
                         // Display the first 500 characters of the response string.
                         targetText.setText(getString(R.string.ufhTarget) + targetValueString);
-
-                        if(mBuilder != null && mNotificationManager != null && prefs.getBoolean("showNotification", true)) {
-                            mBuilder.setContentText("UFH Target: " + targetValueString + ", UFH Temperature: " + currentValueString);
-                            // Because the ID remains unchanged, the existing notification is
-                            // updated.
-                            mNotificationManager.notify(
-                                    mId,
-                                    mBuilder.build());
-                        }
 
                         Context context = getApplicationContext();
                         CharSequence text = getString(R.string.temperatureFetched);
@@ -279,19 +287,10 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(String response) {
 
-                        currentValueString = response.replace("\"", "")+"\u00B0C";
+                        currentValueString = response.replace("\"", "") + "\u00B0C";
 
                         // Display the first 500 characters of the response string.
                         tempText.setText(getString(R.string.ufhTemp) + currentValueString);
-
-                        if(mBuilder != null && mNotificationManager != null && prefs.getBoolean("showNotification", true)) {
-                            mBuilder.setContentText("UFH Target: " + targetValueString + ", UFH Temperature: " + currentValueString);
-                            // Because the ID remains unchanged, the existing notification is
-                            // updated.
-                            mNotificationManager.notify(
-                                    mId,
-                                    mBuilder.build());
-                        }
 
                     }
                 }, new Response.ErrorListener() {
@@ -312,13 +311,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //Get the current temperature
-    private void setTemp(String temperature)
-    {
+    private void setTemp(String temperature) {
         //check if the value for the temperature is valid
         try {
             int myNum = Integer.parseInt(temperature);
-            if(myNum < 0 || myNum > 35)
-            {
+            if (myNum < 0 || myNum > 35) {
                 Context context = getApplicationContext();
                 CharSequence text = getString(R.string.invalidTargetTemp);
                 int duration = Toast.LENGTH_SHORT;
@@ -327,7 +324,7 @@ public class MainActivity extends AppCompatActivity {
                 toast.show();
                 return;
             }
-        } catch(NumberFormatException nfe) {
+        } catch (NumberFormatException nfe) {
             Context context = getApplicationContext();
             CharSequence text = getString(R.string.invalidTargetTemp);
             int duration = Toast.LENGTH_SHORT;
@@ -351,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
         RequestQueue queue = Volley.newRequestQueue(this);
 
         //build the url string
-        String url = getString(R.string.emonPostURL).replace("[apiKey]", apiKey).replace("[feedName]", feedName).replace("[temperature]",temperature);
+        String url = getString(R.string.emonPostURL).replace("[apiKey]", apiKey).replace("[feedName]", feedName).replace("[temperature]", temperature);
 
         // Request a string response from the provided URL.
         StringRequest stringRequest = new StringRequest(com.android.volley.Request.Method.GET, url,
@@ -394,8 +391,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //Get list of channels
-    private void getUserPublicChannels()
-    {
+    private void getUserPublicChannels() {
         //Create the request que
         RequestQueue queue = Volley.newRequestQueue(this);
 
@@ -425,29 +421,24 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //parse user feedJson
-    public void parseUserFeedJSON(String JSONString)
-    {
-        try
-        {
+    public void parseUserFeedJSON(String JSONString) {
+        try {
             JSONArray jsonArray = new JSONArray(JSONString);
             String text = "";
-            for(int i=0;i<jsonArray.length();i++) {
+            for (int i = 0; i < jsonArray.length(); i++) {
                 String name = jsonArray.getJSONObject(i).getString("name");
                 String value = jsonArray.getJSONObject(i).getString("value");
                 String id = jsonArray.getJSONObject(i).getString("id");
 
-                if(id.equals(prefs.getString("chartFeedID", "")))
-                {
+                if (id.equals(prefs.getString("chartFeedID", ""))) {
                     chartFeedName = name;
                 }
                 text += name + " [" + id + "]: " + value + "\n";
             }
 
             userFeedListText.setText(text);
-        }
-        catch(JSONException e)
-        {
-            userFeedListText.setText("Error parsing user feed list JSON: "+ e.toString());
+        } catch (JSONException e) {
+            userFeedListText.setText("Error parsing user feed list JSON: " + e.toString());
         }
 
 
@@ -457,11 +448,16 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_menu, menu);
+
+        if(MyDebug.LOG)Log.i("tom", "activity options menu created");
+
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if(MyDebug.LOG)Log.i("tom", "activity options item selected");
+
         // Handle item selection
         switch (item.getItemId()) {
             case R.id.settings:
@@ -485,15 +481,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onRestart() {
         super.onRestart();  // Always call the superclass method first
 
-        //get shared prefereces and clear notification
-        if(!prefs.getBoolean("showNotification", true) && mNotificationManager != null)mNotificationManager.cancel(mId);
-        if(prefs.getBoolean("showNotification", true) && mNotificationManager == null)createNotification();
-
         // Activity being restarted from stopped state
         //do a fetch if the preference to do so has been set
         boolean pref = prefs.getBoolean("startupSync", true);
-        if(pref)
-        {
+        if (pref) {
             fetchWebData();
         }
 
@@ -501,55 +492,53 @@ public class MainActivity extends AppCompatActivity {
 
         //Remove edit text focus
         findViewById(R.id.mainLayout).requestFocus();
-    }
 
-    private void createNotification()
-    {
-        mBuilder =
-                new NotificationCompat.Builder(this)
-                        .setSmallIcon(R.drawable.ic_ac_unit_black_24dp)
-                        .setContentTitle("Underfloor Heating Control")
-                        .setContentText("Waiting for update.").setOngoing(true);
-        // Creates an explicit intent for an Activity in your app
-        Intent resultIntent = new Intent(this,  MainActivity.class);
+        if(prefs.getBoolean("showNotification", true))startService(new Intent(getBaseContext(), EmonCMSFetchService.class));
+        else stopService(new Intent(getBaseContext(), EmonCMSFetchService.class));
 
-        // The stack builder object will contain an artificial back stack for the
-        // started Activity.
-        // This ensures that navigating backward from the Activity leads out of
-        // your application to the Home screen.
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-        // Adds the back stack for the Intent (but not the Intent itself)
-        stackBuilder.addParentStack(MainActivity.class);
-        // Adds the Intent that starts the Activity to the top of the stack
-        stackBuilder.addNextIntent(resultIntent);
-        PendingIntent resultPendingIntent =
-                stackBuilder.getPendingIntent(
-                        0,
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                );
-        mBuilder.setContentIntent(resultPendingIntent);
-        mNotificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        // mId allows you to update the notification later on.
-        mNotificationManager.notify(mId, mBuilder.build());
+        if(MyDebug.LOG)Log.i("tom", "activity restarted");
     }
 
     @Override
-    protected void onPause()
-    {
+    protected void onPause() {
         super.onPause();
 
-        //end
-        if(!prefs.getBoolean("showNotification", true) && mNotificationManager != null)mNotificationManager.cancel(mId);
-        if(prefs.getBoolean("showNotification", true) && mNotificationManager == null)createNotification();
+        if(MyDebug.LOG)Log.i("tom", "activity paused");
 
         appIsRunning = false;
+
+
+    }
+
+    @Override
+    protected void onStop(){
+
+        super.onStop();
+
+        if(MyDebug.LOG)Log.i("tom", "activity stopped");
     }
 
     @Override
     public void onDestroy() {
-        if(mNotificationManager !=null)mNotificationManager.cancel(mId);
-        super.onDestroy();
 
+        if(MyDebug.LOG)Log.i("tom", "activity destroyed");
+
+        super.onDestroy();
     }
+
+    private ServiceConnection emonCMSConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            MyLocalBinder binder = (MyLocalBinder) iBinder;
+            localEmonCMSFetchService = binder.getService();
+            isBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+
+            isBound = false;
+            if(MyDebug.LOG)Log.i("tom", "service disconnected");
+        }
+    };
 }

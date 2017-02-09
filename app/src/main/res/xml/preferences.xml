@@ -14,13 +14,13 @@
             android:key="autoSync"
             android:title="@string/autoSyncTitle"
             android:summary="@string/autoSyncSummary"
-            android:defaultValue="true" />
+            android:defaultValue="false" />
 
         <CheckBoxPreference
             android:key="showNotification"
             android:title="@string/notificationPreftitle"
             android:summary="@string/notificationPrefSummary"
-            android:defaultValue="true" />
+            android:defaultValue="false" />
 
         <EditTextPreference
             android:key="userID"

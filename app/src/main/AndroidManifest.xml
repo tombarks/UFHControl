@@ -3,6 +3,7 @@
     package="tombarks.UFHControl">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -10,15 +11,20 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name="tombarks.UFHControl.MainActivity">
+        <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="tombarks.UFHControl.preferences_activity"></activity>
-        <service android:name=".emonService" />
+        <activity android:name=".preferences_activity" />
+
+        <service
+            android:name=".EmonCMSFetchService"
+            android:enabled="true"
+            android:exported="true"
+            android:stopWithTask="false"></service>
+
     </application>
 
 </manifest>
